@@ -23,10 +23,79 @@ public class Assignments3
     // Je kan dit doen door een JOIN te gebruiken.
     // Je zult de map functie in Query<Brewmaster, Address, Brewmaster>(sql, map: ...) moeten gebruiken om de Address property van Brewmaster te vullen.
     // Kijk in voorbeelden hoe je dit kan doen. Deze staan in de directory ExampleFromSheets/Relationships.cs.
-    public static List<Brewmaster> GetAllBrouwmeestersIncludesAddress()
+public static List<Brewmaster> GetAllBrouwmeestersIncludesAddress()
     {
-        throw new NotImplementedException();
+        
+        var sql = @"
+        SELECT 
+            b.BrewmasterId, 
+            b.Name, 
+            b.BrewerId, 
+            b.AddressId,
+            '' as AddressSplit,
+            a.AddressId, 
+            a.Street, 
+            a.City, 
+            a.Country
+        FROM Brewmaster b
+        JOIN Address a ON b.AddressId = a.AddressId
+        ORDER BY b.Name";
+
+        using IDbConnection connection = DbHelper.GetConnection();
+        
+        List<Brewmaster> brewmasters = connection.Query<Brewmaster, Address, Brewmaster>(
+                sql,
+                map: (brewmaster, address) =>
+                {
+                    brewmaster.Address = address;
+                    return brewmaster;
+                },
+                splitOn: "AddressSplit")
+            .ToList();
+
+        return brewmasters;
+        /*string sql =
+            """
+            SELECT 
+                c.customer_id AS CustomerId,
+                c.store_id AS StoreId,
+                c.first_name AS FirstName,
+                c.last_name AS LastName,
+                c.email AS Email,
+                c.address_id AS AddressId,
+                c.active AS Active,
+                c.create_date AS CreateDate,
+                c.last_update AS LastUpdate,
+                '' as 'AddressSplit',
+                a.address_id AS AddressId,
+                a.address AS Address1,
+                a.address2 AS Address2,
+                a.district AS District,
+                a.city_id AS CityId,
+                a.postal_code AS PostalCode,
+                a.phone AS Phone,
+                a.last_update AS LastUpdate
+            FROM customer c 
+                JOIN address a ON c.address_id = a.address_id
+            ORDER BY c.last_name, c.first_name
+            Limit 10
+            """;
+
+        using IDbConnection connection = DbHelper.GetConnection();
+        List<Customer> customers = connection.Query<Customer, Address, Customer>(
+                sql,
+                map: (customer, address) =>
+                {
+                    customer.Address = address;
+                    return customer;
+                },
+                splitOn: "AddressSplit")
+            .ToList();
+        return customers;
+    }*/
+
     }
+
 
     // 3.2 Question
     // 1 op 1 relatie (one-to-one relationship)
@@ -34,7 +103,34 @@ public class Assignments3
     // Sorteer op naam.
     public static List<Brewmaster> GetAllBrewmastersWithBrewery()
     {
-        throw new NotImplementedException();
+        var sql = @"
+        SELECT 
+            b.BrewmasterId, 
+            b.Name, 
+            b.BrewerId, 
+            b.AddressId,
+            '' as BrewerSplit,
+            a.BrewerId, 
+            a.Name, 
+            a.Country
+        FROM Brewmaster b
+        JOIN Brewer a ON b.BrewerId = a.BrewerId
+        ORDER BY b.Name";
+
+        using IDbConnection connection = DbHelper.GetConnection();
+        
+        List<Brewmaster> brewmasters = connection.Query<Brewmaster, Brewer, Brewmaster>(
+                sql,
+                map: (brewmaster, brewer) =>
+                {
+                    brewmaster.Brewer = brewer;
+                    return brewmaster;
+                },
+                splitOn: "BrewerSplit")
+            .ToList();
+
+        return brewmasters;
+        
     }
 
     // 3.3 Question
@@ -54,9 +150,42 @@ public class Assignments3
     // hoe moet dan je if worden?
     public static List<Brewer> GetAllBrewersIncludeBrewmaster()
     {
-        throw new NotImplementedException();
+        var sql = @"
+        SELECT 
+            b.BrewerId, 
+            b.Name, 
+            b.Country,
+            '' as BrewerSplit,
+            a.BrewmasterId, 
+            a.Name, 
+            a.BrewerId, 
+            a.AddressId
+        FROM Brewer b
+        LEFT JOIN Brewmaster a ON b.BrewerId = a.BrewerId
+        ORDER BY b.Name";
+
+        using IDbConnection connection = DbHelper.GetConnection();
+        
+        List<Brewer> Brewer = connection.Query<Brewer, Brewmaster?, Brewer>(
+                sql,
+                map: (brewer, brewmaster) =>
+                {
+                    if (brewmaster.Name != null)
+                    {
+                        brewer.Brewmaster = brewmaster;
+                    }
+                       
+                    return brewer;
+                },
+                splitOn: "BrewerSplit")
+            .ToList();
+
+        
+        return Brewer;
+        
+        
     }
-    
+
     // 3.4 Question
     // 1 op veel relatie (one-to-many relationship)
     // Geef een overzicht van alle bieren. Zorg ervoor dat de property Brewer gevuld is.

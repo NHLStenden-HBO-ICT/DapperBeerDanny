@@ -44,7 +44,7 @@ public class Assignments2Tests : TestHelper
     
     // 2.4 Test
     [Test]
-    public void GetAllBeersByCountryAndTypeTest()
+    public void GetAllBeersByCountryAndTypeTestHoeftNiet()
     {
         Assignments2.GetAllBeersByCountryAndMinAlcoholOrderByWithSqlBuilder("BEL", 5.5m).Should().HaveCount(213);
         Assignments2.GetAllBeersByCountryAndMinAlcoholOrderByWithSqlBuilder(minAlcohol: 5.5m).Should().HaveCount(626);

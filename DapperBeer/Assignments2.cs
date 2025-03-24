@@ -29,7 +29,12 @@ public class Assignments2
     // !!!DOE DIT NOOIT MEER SVP!!!!
     public static List<string> GetBeersByCountryWithSqlInjection(string country)
     {
-        throw new NotImplementedException();
+        var connection = DbHelper.GetConnection();
+        var sql = $"SELECT * FROM brewer WHERE Country = '{country}'";
+        
+        var result = connection.Query<string>(sql).ToList();
+        return result;  
+       
     }
     
     // 2.2 Question
@@ -42,7 +47,15 @@ public class Assignments2
     // Dit betekent dus dat country null kan zijn.
     public static List<string> GetAllBeersByCountry(string? country)
     {
-        throw new NotImplementedException();
+        var connection = DbHelper.GetConnection();
+        var sql =
+            @"SELECT Beer.Name
+                FROM Beer 
+                 JOIN Brewer ON Beer.BrewerID = Brewer.BrewerID 
+                  WHERE (@Country IS NULL OR Brewer.Country = @Country)
+                  ORDER BY Beer.Name";
+        var beers = connection.Query<string>(sql, new { Country = country }).ToList();
+        return beers;
     }
     
     // 2.3 Question
@@ -52,9 +65,19 @@ public class Assignments2
     // Gebruikt <= (kleiner of gelijk aan) voor de vergelijking van het minAlcohol.
     public static List<string> GetAllBeersByCountryAndMinAlcohol(string? country = null, decimal? minAlcohol = null)
     {
-        throw new NotImplementedException();
+
+        var connection = DbHelper.GetConnection();
+        var sql =
+            @"SELECT Beer.Name
+                FROM Beer 
+                 JOIN Brewer ON Beer.BrewerID = Brewer.BrewerID 
+                  WHERE (@Country IS NULL OR Brewer.Country = @Country)
+                  AND (@minAlcohol IS NULL OR beer.Alcohol >= @minAlcohol)
+                  ORDER BY Beer.Name";
+        var beers = connection.Query<string>(sql, new { Country = country, MinAlcohol = minAlcohol }).ToList();
+        return beers;
     }
-    
+
     // 2.4 Question
     // Helaas kan je in SQL bijv. geen parameter gebruiken voor de ORDER BY.
     // Dit kan je oplossen door de SQL te bouwen met een StringBuilder of een SqlBuilder.
@@ -90,17 +113,30 @@ public class Assignments2
         string? country = null, decimal? minAlcohol = null, string orderBy = "beer.Name")
     {
         using IDbConnection connection = DbHelper.GetConnection();
-        string sql = $"""
-                      SELECT beer.Name
-                      FROM Beer beer 
-                           JOIN Brewer brewer ON beer.BrewerId = brewer.BrewerId 
-                      /**where**/
-                      /**orderby**/
-                      """;
-        
-        SqlBuilder builder = new SqlBuilder();
-        
-        throw new NotImplementedException();
+
+        var template = new SqlBuilder();
+        var selector = template.AddTemplate($$"""
+                                              SELECT beer.Name
+                                              FROM Beer beer 
+                                              JOIN Brewer brewer ON beer.BrewerId = brewer.BrewerId 
+                                              /**where**/
+                                              ORDER BY {{orderBy}}
+                                              """);
+
+
+        if (country != null)
+        {
+            template = template.Where("brewer.Country = @Country", new { Country = country });
+        }
+
+        if (minAlcohol != null)
+        {
+            template = template.Where("beer.Alcohol >= @MinAlcohol", new { MinAlcohol = minAlcohol });
+        }
+
+
+        var beers = connection.Query<string>(selector.RawSql, selector.Parameters).ToList();
+        return beers;
     }
 
     // 2.5 Question
@@ -112,7 +148,27 @@ public class Assignments2
     // Gebruik de klasse BrewerBeerBrewmaster om de resultaten in op te slaan. (directory DTO).
     public static List<BrewerBeerBrewmaster> GetAllBeerNamesWithBreweryAndBrewmaster()
     {
-        throw new NotImplementedException();
+        
+        var connection = DbHelper.GetConnection();
+        var sql = @"
+            SELECT
+                BeerName,
+                BrewerName,
+                BrewmasterName
+            FROM
+                BeerBrewerBrewmaster
+            WHERE
+                BrewmasterName IS NOT NULL
+            ORDER BY
+                BeerName;";
+                        
+        
+        
+        var results = connection.Query<BrewerBeerBrewmaster>(sql).ToList();
+        
+        return results;
+                        
+
     }
     
     // 2.6 Question
@@ -125,6 +181,7 @@ public class Assignments2
     // LIMIT @PageSize OFFSET @Offset  
     // Sorteer op OrderBy
     // Zie de klasse BeerFilter.
+
     public class BeerFilter
     {
         public string? Country { get; set; }
@@ -139,17 +196,28 @@ public class Assignments2
     public static List<Beer> GetBeersByCountryAndType(BeerFilter filter)
     {
         using IDbConnection connection = DbHelper.GetConnection();
-        string sql = $"""
-                      SELECT beer.BeerId, beer.Name, beer.Type, beer.Style, beer.Alcohol, beer.BrewerId
-                      FROM Beer beer 
-                           JOIN Brewer brewer ON beer.BrewerId = brewer.BrewerId
-                      /**where**/
-                      /**orderby**/
-                      LIMIT @PageSize OFFSET @Offset
-                      """;
-        
-        SqlBuilder builder = new SqlBuilder();
+        string sql = $@"
+                SELECT beer.BeerId, beer.Name, beer.Type, beer.Style, beer.Alcohol, beer.BrewerId
+                FROM Beer beer 
+                JOIN Brewer brewer ON beer.BrewerId = brewer.BrewerId
+                WHERE (@Country IS NULL OR brewer.Country = @Country)
+                AND (@Type IS NULL OR beer.Type = @Type)
+                ORDER BY @OrderBy
+                LIMIT @PageSize OFFSET @Offset
+";
 
-        throw new NotImplementedException();
+        var Parameters = new
+        {
+            Country = filter.Country,
+            Type = filter.Type,
+            PageSize = filter.PageSize,
+            PageIndex = filter.PageIndex,
+            Offset = filter.Offset,
+            OrderBy = filter.OrderBy
+        };
+        
+        var results = connection.Query<Beer>(sql, Parameters).ToList();
+        
+        return results;
     }
 }
