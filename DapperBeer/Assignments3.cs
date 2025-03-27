@@ -195,8 +195,49 @@ public static List<Brewmaster> GetAllBrouwmeestersIncludesAddress()
     // Kijk in voorbeelden hoe je dit kan doen. Deze staan in de directory ExampleFromSheets/Relationships.cs.
     public static List<Beer> GetAllBeersIncludeBrewery()
     {
-        throw new NotImplementedException();
+        string sql = @"SELECT
+                    be.BeerId,
+                    be.Name,
+                    be.Type,
+                    be.Style,
+                    be.Alcohol,
+                    be.BrewerId,
+                        
+                    '' AS 'BeerSplit',
+                        
+                    br.BrewerId,
+                    br.Name,
+                    br.Country
+                    FROM beer be JOIN brewer br ON be.BrewerId = br.BrewerId
+                    ORDER BY be.Name, be.BeerId";
+    
+        Dictionary<int, Brewer> brewerDictionary = new Dictionary<int, Brewer>();
+    
+        using IDbConnection connection = DbHelper.GetConnection();
+        List<Beer> beers = connection.Query<Beer, Brewer, Beer>(
+                sql,
+                map: (beer, brewer) =>
+                {
+                    if (brewerDictionary.ContainsKey(brewer.BrewerId))
+                    {
+                        brewer = brewerDictionary[brewer.BrewerId];
+                    }
+                    else
+                    {
+                        brewerDictionary.Add(brewer.BrewerId, brewer);
+                    }
+
+                    brewer.Beers.Add(beer);
+
+                    beer.Brewer = brewer;
+                    return beer;
+                }, 
+            
+            splitOn: "BeerSplit")
+            .ToList();
+        return beers;
     }
+
     
     // 3.5 Question
     // N+1 probleem (1-to-many relationship)
