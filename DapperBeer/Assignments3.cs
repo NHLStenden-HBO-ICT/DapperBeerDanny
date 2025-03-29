@@ -195,46 +195,42 @@ public static List<Brewmaster> GetAllBrouwmeestersIncludesAddress()
     // Kijk in voorbeelden hoe je dit kan doen. Deze staan in de directory ExampleFromSheets/Relationships.cs.
     public static List<Beer> GetAllBeersIncludeBrewery()
     {
-        string sql = @"SELECT
-                    be.BeerId,
-                    be.Name,
-                    be.Type,
-                    be.Style,
-                    be.Alcohol,
-                    be.BrewerId,
-                        
-                    '' AS 'BeerSplit',
-                        
-                    br.BrewerId,
-                    br.Name,
-                    br.Country
-                    FROM beer be JOIN brewer br ON be.BrewerId = br.BrewerId
-                    ORDER BY be.Name, be.BeerId";
-    
+        string sql = 
+            @"  SELECT beer.beerid,
+                beer.name,
+                beer.type,
+                beer.style,
+                beer.alcohol,
+                beer.brewerid,
+                '' as 'BrewerSplit',
+                brewer.brewerid,
+                brewer.name,
+                brewer.Country
+                from beer
+                join brewer on beer.brewerid = brewer.brewerid
+                ORDER BY beer.name, beer.beerid
+                LIMIT 10";
+
         Dictionary<int, Brewer> brewerDictionary = new Dictionary<int, Brewer>();
-    
+
         using IDbConnection connection = DbHelper.GetConnection();
         List<Beer> beers = connection.Query<Beer, Brewer, Beer>(
-                sql,
-                map: (beer, brewer) =>
+            sql,
+            map: (beer, brewer) =>
+            {
+                if (brewerDictionary.ContainsKey(brewer.BrewerId))
                 {
-                    if (brewerDictionary.ContainsKey(brewer.BrewerId))
-                    {
-                        brewer = brewerDictionary[brewer.BrewerId];
-                    }
-                    else
-                    {
-                        brewerDictionary.Add(brewer.BrewerId, brewer);
-                    }
-
-                    brewer.Beers.Add(beer);
-
-                    beer.Brewer = brewer;
-                    return beer;
-                }, 
-            
-            splitOn: "BeerSplit")
-            .ToList();
+                    brewer = brewerDictionary[brewer.BrewerId];
+                }
+                else
+                {
+                    brewerDictionary.Add(brewer.BrewerId, brewer);
+                }
+                
+                beer.Brewer = brewer;
+                return beer;
+            },
+            splitOn: "BrewerSplit").ToList();
         return beers;
     }
 
@@ -249,7 +245,44 @@ public static List<Brewmaster> GetAllBrouwmeestersIncludesAddress()
     // Als N groot is (veel brouwerijen) dan kan dit een performance probleem zijn of worden. Probeer dit te voorkomen!
     public static List<Brewer> GetAllBrewersIncludingBeersNPlus1()
     {
-        throw new NotImplementedException();
+        string sql =
+            @"  SELECT
+                        brewer.brewerid,
+                        brewer.name,
+                        brewer.country,
+                        '' as BeerSplit,
+                        beer.name,
+                        beer.beerid,
+                        beer.type,
+                        beer.style,
+                        beer.alcohol,
+                        beer.brewerid
+                        from brewer
+                        join beer on brewer.brewerid = beer.brewerid
+                        ORDER BY brewer.name, beer.name";
+
+        Dictionary<int, Brewer> brewerDictionary = new Dictionary<int, Brewer>();
+        using IDbConnection connection = DbHelper.GetConnection();
+        List<Brewer> brewer = connection.Query<Brewer, Beer, Brewer>(
+                sql,
+                map: (brewer, beer) =>
+                {
+                    if (brewerDictionary.ContainsKey(brewer.BrewerId))
+                    {
+                        brewer = brewerDictionary[brewer.BrewerId];
+                    }
+                    else
+                    {
+                        brewerDictionary.Add(brewer.BrewerId, brewer);
+                    }
+
+                    brewer.Beers.Add(beer);
+                    return brewer;
+                },
+                splitOn: "BeerSplit")
+            .Distinct() 
+            .ToList();
+        return brewer;
     }
     
     // 3.6 Question
