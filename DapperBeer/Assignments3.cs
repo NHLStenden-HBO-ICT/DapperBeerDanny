@@ -300,7 +300,46 @@ public static List<Brewmaster> GetAllBrouwmeestersIncludesAddress()
     
     public static List<Brewer> GetAllBrewersIncludeBeers()
     {
-        throw new NotImplementedException();
+        string sql =
+            @"  SELECT
+                    brewer.brewerid,
+                    brewer.name,
+                    brewer.country,
+                    '' as BeerSplit,
+                    beer.beerid,
+                    beer.name,
+                    beer.type,
+                    beer.style,
+                    beer.alcohol,
+                    beer.brewerid
+                    FROM brewer
+                    LEFT JOIN beer ON brewer.brewerid = beer.brewerid
+                    ORDER BY brewer.name, beer.name";
+
+        Dictionary<int, Brewer> brewerDictionary = new Dictionary<int, Brewer>();
+        using IDbConnection connection = DbHelper.GetConnection();
+        List<Brewer> brewers = connection.Query<Brewer, Beer, Brewer>(
+                sql,
+                map: (brewer, beer) =>
+                {
+                    if (brewerDictionary.ContainsKey(brewer.BrewerId))
+                    {
+                        brewer = brewerDictionary[brewer.BrewerId];
+                    }
+                    else
+                    {
+                        brewerDictionary.Add(brewer.BrewerId, brewer);
+                    }
+                
+                    brewer.Beers.Add(beer);
+                
+                    return brewer;
+                },
+                splitOn: "BeerSplit")
+            .Distinct()
+            .ToList();
+    
+        return brewers;
     }
     
     // 3.7 Question
@@ -340,10 +379,12 @@ public static List<Brewmaster> GetAllBrouwmeestersIncludesAddress()
     // Gebruik de methode Query<Brewer, Beer, Cafe, Brewer>(...) met daarin de juiste JOIN's in de query en splitOn parameter.
     // Je zult twee dictionaries moeten gebruiken. Een voor de brouwerijen en een voor de bieren.
     public static List<Brewer> GetAllBrewersIncludeBeersThenIncludeCafes()
-    {
-        throw new NotImplementedException();
-    }
-    
+{
+    throw new NotImplementedException();
+}
+
+
+
     // 3.10 Question - Er is geen test voor deze vraag
     // Optioneel: Geef een overzicht van alle bieren en hun de bijbehorende brouwerij.
     // Sorteer op brouwerijnaam, biernaam.
